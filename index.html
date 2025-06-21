@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live Chat with Login</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; margin: 0; max-width: 600px; margin: auto; }
+    #messages { border: 1px solid #ccc; height: 300px; overflow-y: scroll; padding: 10px; margin-top: 20px; }
+    input, button { padding: 10px; margin-top: 10px; width: 100%; font-size: 16px; box-sizing: border-box; }
+    #login-area, #chat-area { display: none; }
+    .message { margin-bottom: 10px; }
+    .meta { font-size: 12px; color: gray; }
+  </style>
+</head>
+<body>
+  <h2>💬 Live Chat</h2>
+
+  <!-- LOGIN AREA -->
+  <div id="login-area">
+    <button onclick="signIn()">🔐 Sign in with Google</button>
+    <button onclick="guestLogin()">🙈 Continue as Guest</button>
+  </div>
+
+  <!-- CHAT AREA -->
+  <div id="chat-area">
+    <p>👋 Welcome, <span id="username"></span>! <button onclick="signOut()">🚪 Logout</button></p>
+    <div id="messages"></div>
+    <input type="text" id="message" placeholder="Type a message..." />
+    <button onclick="sendMessage()">Send</button>
+  </div>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
+  <script>
+    // ✅ Your Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyC-cQSpTcE4iKD-0WjjVacb_OLZZfGE4tg",
+      authDomain: "chat-349eb.firebaseapp.com",
+      databaseURL: "https://chat-349eb-default-rtdb.firebaseio.com",
+      projectId: "chat-349eb",
+      storageBucket: "chat-349eb.appspot.com",
+      messagingSenderId: "144724814500",
+      appId: "1:144724814500:web:22997fc512fe1338769431"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const auth = firebase.auth();
+
+    let currentUser = null;
+    let guestName = null;
+
+    function signIn() {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      auth.signInWithPopup(provider).catch(alert);
+    }
+
+    function guestLogin() {
+      const name = prompt("Enter a guest nickname:");
+      if (name && name.trim() !== "") {
+        guestName = `[Guest] ${name.trim()}`;
+        showChat();
+      }
+    }
+
+    function signOut() {
+      auth.signOut();
+      guestName = null;
+      window.location.reload();
+    }
+
+    function showChat() {
+      document.getElementById("username").textContent = guestName || currentUser.displayName;
+      document.getElementById("login-area").style.display = "none";
+      document.getElementById("chat-area").style.display = "block";
+    }
+
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        currentUser = user;
+        showChat();
+      }
+    });
+
+    function sendMessage() {
+      const message = document.getElementById("message").value;
+      if ((currentUser || guestName) && message) {
+        const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        db.ref("messages").push({
+          name: guestName || currentUser.displayName,
+          message: message,
+          time: timestamp
+        });
+        document.getElementById("message").value = "";
+      }
+    }
+
+    db.ref("messages").on("child_added", (data) => {
+      const msg = data.val();
+      const messagesDiv = document.getElementById("messages");
+      const msgEl = document.createElement("div");
+      msgEl.className = "message";
+      msgEl.innerHTML = `<strong>${msg.name}</strong>: ${msg.message}<div class="meta">${msg.time || ""}</div>`;
+      messagesDiv.appendChild(msgEl);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    });
+  </script>
+</body>
+</html>
